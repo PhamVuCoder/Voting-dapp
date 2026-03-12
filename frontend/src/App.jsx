@@ -1,27 +1,28 @@
 import { useState, useEffect, useCallback } from "react";
-import { connectWallet, getSignedContract, getContract } from "./utils/contract";
+import { connectWallet, getSignedContract, getContract, getReadContract } from "./utils/contract";
 import "./App.css";
 
 const CANDIDATE_EMOJIS = ["🔵", "🔴", "🟢", "🟡", "🟣"];
 
 function App() {
-  const [account, setAccount] = useState(null);
+  const [account, setAccount]     = useState(null);
   const [candidates, setCandidates] = useState([]);
-  const [hasVoted, setHasVoted] = useState(false);
-  const [isVoting, setIsVoting] = useState(false);
-  const [votingId, setVotingId] = useState(null);
-  const [message, setMessage] = useState({ text: "", type: "" });
-  const [txHash, setTxHash] = useState("");
+  const [hasVoted, setHasVoted]   = useState(false);
+  const [isVoting, setIsVoting]   = useState(false);
+  const [votingId, setVotingId]   = useState(null);
+  const [message, setMessage]     = useState({ text: "", type: "" });
+  const [txHash, setTxHash]       = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [newVoteId, setNewVoteId] = useState(null); // ← flash khi có vote mới
+  const [newVoteId, setNewVoteId] = useState(null);
 
+  // ── Dùng HTTP contract để load data nhanh ──────────────
   const loadCandidates = useCallback(async () => {
     try {
-      const contract = getContract();
+      const contract = getReadContract(); // ← HTTP, nhanh hơn
       const raw = await contract.getAllCandidates();
       const list = raw.map((c) => ({
-        id: Number(c.id),
-        name: c.name,
+        id:    Number(c.id),
+        name:  c.name,
         votes: Number(c.voteCount),
       }));
       setCandidates(list);
@@ -33,9 +34,10 @@ function App() {
     }
   }, []);
 
+  // ── Dùng HTTP contract để check voted ──────────────────
   const checkVoted = useCallback(async (addr) => {
     try {
-      const contract = getContract();
+      const contract = getReadContract(); // ← HTTP
       const voted = await contract.hasVoted(addr);
       setHasVoted(voted);
     } catch (err) {
@@ -64,7 +66,7 @@ function App() {
     setMessage({ text: "⏳ Đang gửi transaction lên blockchain...", type: "info" });
 
     try {
-      const contract = await getSignedContract();
+      const contract = await getSignedContract(); // ← MetaMask
       const tx = await contract.vote(candidateId);
       setMessage({ text: "⛓️ Đang chờ xác nhận trên Sepolia (~15 giây)...", type: "info" });
       await tx.wait();
@@ -90,16 +92,14 @@ function App() {
   useEffect(() => {
     loadCandidates();
 
-    const contract = getContract();
+    // ⚡ WebSocket contract — lắng nghe events real-time
+    const wsContract = getContract();
 
-    // ⚡ Real-time: lắng nghe event Voted từ blockchain
-    contract.on("Voted", (voter, candidateId) => {
+    wsContract.on("Voted", (voter, candidateId) => {
       console.log(`🗳️ Vote mới! Địa chỉ: ${voter}, Ứng viên: ${candidateId}`);
+      loadCandidates(); // reload số phiếu qua HTTP
 
-      // Reload số phiếu
-      loadCandidates();
-
-      // Flash card vừa nhận phiếu trong 2 giây
+      // Flash card trong 2 giây
       setNewVoteId(Number(candidateId));
       setTimeout(() => setNewVoteId(null), 2000);
     });
@@ -117,9 +117,8 @@ function App() {
       window.ethereum.on("chainChanged", () => window.location.reload());
     }
 
-    // Cleanup khi component unmount
     return () => {
-      contract.removeAllListeners("Voted");
+      wsContract.removeAllListeners("Voted");
     };
   }, [loadCandidates, checkVoted]);
 
@@ -179,11 +178,11 @@ function App() {
                 const pct = totalVotes > 0
                   ? ((c.votes / totalVotes) * 100).toFixed(1)
                   : 0;
-                const isWinning = totalVotes > 0
+                const isWinning  = totalVotes > 0
                   && c.votes === Math.max(...candidates.map(x => x.votes))
                   && c.votes > 0;
                 const isThisVoting = isVoting && votingId === c.id;
-                const isFlashing = newVoteId === c.id;
+                const isFlashing   = newVoteId === c.id;
 
                 return (
                   <div
@@ -194,14 +193,8 @@ function App() {
                       isFlashing ? "card--flash"   : "",
                     ].join(" ")}
                   >
-                    {isWinning && (
-                      <div className="winning-badge">👑 Đang dẫn đầu</div>
-                    )}
-
-                    {/* Badge real-time */}
-                    {isFlashing && (
-                      <div className="new-vote-badge">⚡ Vừa có phiếu mới!</div>
-                    )}
+                    {isWinning  && <div className="winning-badge">👑 Đang dẫn đầu</div>}
+                    {isFlashing && <div className="new-vote-badge">⚡ Vừa có phiếu mới!</div>}
 
                     <div className="card-emoji">{CANDIDATE_EMOJIS[i] || "🔵"}</div>
                     <h3 className="card-name">{c.name}</h3>
@@ -228,9 +221,7 @@ function App() {
                       </button>
                     )}
 
-                    {!account && (
-                      <p className="card-hint">Kết nối ví để bỏ phiếu</p>
-                    )}
+                    {!account && <p className="card-hint">Kết nối ví để bỏ phiếu</p>}
                   </div>
                 );
               })}
@@ -239,9 +230,7 @@ function App() {
         )}
 
         {message.text && (
-          <div className={`message message--${message.type}`}>
-            {message.text}
-          </div>
+          <div className={`message message--${message.type}`}>{message.text}</div>
         )}
 
         {txHash && (
