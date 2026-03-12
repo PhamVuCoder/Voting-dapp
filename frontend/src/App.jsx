@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from "react";
 import { connectWallet, getSignedContract, getContract } from "./utils/contract";
 import "./App.css";
 
-// ── Emoji cho từng ứng viên ──────────────────────────────
 const CANDIDATE_EMOJIS = ["🔵", "🔴", "🟢", "🟡", "🟣"];
 
 function App() {
@@ -10,16 +9,15 @@ function App() {
   const [candidates, setCandidates] = useState([]);
   const [hasVoted, setHasVoted] = useState(false);
   const [isVoting, setIsVoting] = useState(false);
-  const [votingId, setVotingId] = useState(null); // id đang được vote
+  const [votingId, setVotingId] = useState(null);
   const [message, setMessage] = useState({ text: "", type: "" });
   const [txHash, setTxHash] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [newVoteId, setNewVoteId] = useState(null); // ← flash khi có vote mới
 
-  // ── Load tất cả candidates từ blockchain ────────────────
   const loadCandidates = useCallback(async () => {
     try {
       const contract = getContract();
-      // Dùng getAllCandidates() — 1 lần gọi duy nhất, rất tiện!
       const raw = await contract.getAllCandidates();
       const list = raw.map((c) => ({
         id: Number(c.id),
@@ -35,7 +33,6 @@ function App() {
     }
   }, []);
 
-  // ── Kiểm tra đã vote chưa ───────────────────────────────
   const checkVoted = useCallback(async (addr) => {
     try {
       const contract = getContract();
@@ -46,7 +43,6 @@ function App() {
     }
   }, []);
 
-  // ── Kết nối MetaMask ────────────────────────────────────
   const handleConnect = async () => {
     setMessage({ text: "", type: "" });
     try {
@@ -58,7 +54,6 @@ function App() {
     }
   };
 
-  // ── Bỏ phiếu ───────────────────────────────────────────
   const handleVote = async (candidateId) => {
     if (!account) {
       setMessage({ text: "⚠️ Hãy kết nối ví trước!", type: "warn" });
@@ -72,11 +67,11 @@ function App() {
       const contract = await getSignedContract();
       const tx = await contract.vote(candidateId);
       setMessage({ text: "⛓️ Đang chờ xác nhận trên Sepolia (~15 giây)...", type: "info" });
-      await tx.wait(); // chờ được mine
+      await tx.wait();
       setTxHash(tx.hash);
       setHasVoted(true);
       setMessage({ text: "🎉 Bỏ phiếu thành công! Cảm ơn bạn đã tham gia.", type: "success" });
-      await loadCandidates(); // Refresh số phiếu
+      await loadCandidates();
     } catch (err) {
       if (err.code === "ACTION_REJECTED") {
         setMessage({ text: "❌ Bạn đã hủy transaction trong MetaMask.", type: "error" });
@@ -92,9 +87,22 @@ function App() {
     }
   };
 
-  // ── Init: load candidates + lắng nghe đổi account ──────
   useEffect(() => {
     loadCandidates();
+
+    const contract = getContract();
+
+    // ⚡ Real-time: lắng nghe event Voted từ blockchain
+    contract.on("Voted", (voter, candidateId) => {
+      console.log(`🗳️ Vote mới! Địa chỉ: ${voter}, Ứng viên: ${candidateId}`);
+
+      // Reload số phiếu
+      loadCandidates();
+
+      // Flash card vừa nhận phiếu trong 2 giây
+      setNewVoteId(Number(candidateId));
+      setTimeout(() => setNewVoteId(null), 2000);
+    });
 
     if (window.ethereum) {
       window.ethereum.on("accountsChanged", async (accounts) => {
@@ -108,14 +116,17 @@ function App() {
       });
       window.ethereum.on("chainChanged", () => window.location.reload());
     }
+
+    // Cleanup khi component unmount
+    return () => {
+      contract.removeAllListeners("Voted");
+    };
   }, [loadCandidates, checkVoted]);
 
-  // ── Tính toán cho progress bar ──────────────────────────
   const totalVotes = candidates.reduce((sum, c) => sum + c.votes, 0);
 
   return (
     <div className="app">
-      {/* ── Header ──────────────────────────────────────── */}
       <header className="header">
         <div className="header-inner">
           <div className="logo">
@@ -141,7 +152,6 @@ function App() {
         </div>
       </header>
 
-      {/* ── Main ────────────────────────────────────────── */}
       <main className="main">
         <div className="intro">
           <h2>Bỏ phiếu bầu cử</h2>
@@ -151,7 +161,6 @@ function App() {
           )}
         </div>
 
-        {/* ── Trạng thái loading ──────────────────────── */}
         {isLoading ? (
           <div className="loading-state">
             <div className="spinner" />
@@ -159,25 +168,40 @@ function App() {
           </div>
         ) : (
           <>
-            {/* ── Banner đã vote ───────────────────────── */}
             {hasVoted && (
               <div className="voted-banner">
                 ✅ Bạn đã bỏ phiếu! Cảm ơn bạn đã tham gia.
               </div>
             )}
 
-            {/* ── Grid ứng viên ────────────────────────── */}
             <div className="candidates-grid">
               {candidates.map((c, i) => {
                 const pct = totalVotes > 0
                   ? ((c.votes / totalVotes) * 100).toFixed(1)
                   : 0;
-                const isWinning = totalVotes > 0 && c.votes === Math.max(...candidates.map(x => x.votes)) && c.votes > 0;
+                const isWinning = totalVotes > 0
+                  && c.votes === Math.max(...candidates.map(x => x.votes))
+                  && c.votes > 0;
                 const isThisVoting = isVoting && votingId === c.id;
+                const isFlashing = newVoteId === c.id;
 
                 return (
-                  <div key={c.id} className={`card ${isWinning ? "card--winning" : ""}`}>
-                    {isWinning && <div className="winning-badge">👑 Đang dẫn đầu</div>}
+                  <div
+                    key={c.id}
+                    className={[
+                      "card",
+                      isWinning  ? "card--winning" : "",
+                      isFlashing ? "card--flash"   : "",
+                    ].join(" ")}
+                  >
+                    {isWinning && (
+                      <div className="winning-badge">👑 Đang dẫn đầu</div>
+                    )}
+
+                    {/* Badge real-time */}
+                    {isFlashing && (
+                      <div className="new-vote-badge">⚡ Vừa có phiếu mới!</div>
+                    )}
 
                     <div className="card-emoji">{CANDIDATE_EMOJIS[i] || "🔵"}</div>
                     <h3 className="card-name">{c.name}</h3>
@@ -188,28 +212,22 @@ function App() {
                     </div>
 
                     <div className="progress-wrap">
-                      <div
-                        className="progress-bar"
-                        style={{ width: `${pct}%` }}
-                      />
+                      <div className="progress-bar" style={{ width: `${pct}%` }} />
                     </div>
 
-                    {/* Nút bỏ phiếu — chỉ hiện khi đã login và chưa vote */}
                     {account && !hasVoted && (
                       <button
                         className={`btn-vote ${isThisVoting ? "btn-vote--loading" : ""}`}
                         onClick={() => handleVote(c.id)}
                         disabled={isVoting}
                       >
-                        {isThisVoting ? (
-                          <><span className="btn-spinner" /> Đang xử lý...</>
-                        ) : (
-                          "🗳 Bỏ phiếu"
-                        )}
+                        {isThisVoting
+                          ? <><span className="btn-spinner" /> Đang xử lý...</>
+                          : "🗳 Bỏ phiếu"
+                        }
                       </button>
                     )}
 
-                    {/* Gợi ý khi chưa connect */}
                     {!account && (
                       <p className="card-hint">Kết nối ví để bỏ phiếu</p>
                     )}
@@ -220,14 +238,12 @@ function App() {
           </>
         )}
 
-        {/* ── Thông báo ───────────────────────────────── */}
         {message.text && (
           <div className={`message message--${message.type}`}>
             {message.text}
           </div>
         )}
 
-        {/* ── Link Etherscan ───────────────────────────── */}
         {txHash && (
           <a
             className="etherscan-link"
@@ -240,11 +256,10 @@ function App() {
         )}
       </main>
 
-      {/* ── Footer ──────────────────────────────────────── */}
       <footer className="footer">
         Contract:{" "}
         <a
-          href={`https://sepolia.etherscan.io/address/0x81778A172ee9D23ae22f6BE381ce9670b1BB4E86`}
+          href="https://sepolia.etherscan.io/address/0x81778A172ee9D23ae22f6BE381ce9670b1BB4E86"
           target="_blank"
           rel="noreferrer"
         >
