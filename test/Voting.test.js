@@ -1,63 +1,106 @@
 const { expect } = require("chai");
-const { ethers } = require("hardhat");
+const { ethers }  = require("hardhat");
 
-describe("Voting Contract", function () {
-  let voting, owner, voter1, voter2;
+describe("Voting v2 — Admin + Deadline", function () {
+  let voting, owner, addr1, addr2;
 
-  // Chạy trước mỗi test — deploy contract mới
-  beforeEach(async function () {
-    [owner, voter1, voter2] = await ethers.getSigners();
+  beforeEach(async () => {
+    [owner, addr1, addr2] = await ethers.getSigners();
     const Voting = await ethers.getContractFactory("Voting");
     voting = await Voting.deploy();
+    // Lúc này có 3 ứng viên mặc định, isActive = false
   });
 
-  // TEST 1
-  it("Nên có 3 ứng viên ban đầu", async function () {
-    const count = await voting.candidatesCount();
-    expect(count).to.equal(3);
+  // ── Khởi tạo ────────────────────────────────────────
+  it("1. Owner đúng", async () => {
+    expect(await voting.owner()).to.equal(owner.address);
   });
 
-  // TEST 2
-  it("Ứng viên đầu tiên tên là Ung vien A", async function () {
-    const candidate = await voting.candidates(1);
-    expect(candidate.name).to.equal("Ung vien A");
-    expect(candidate.voteCount).to.equal(0);
+  it("2. Mặc định chưa mở bầu cử", async () => {
+    expect(await voting.isActive()).to.equal(false);
   });
 
-  // TEST 3
-  it("Bỏ phiếu thành công", async function () {
-    await voting.connect(voter1).vote(1);
-    const candidate = await voting.candidates(1);
-    expect(candidate.voteCount).to.equal(1);
+  it("3. Có 3 ứng viên mặc định", async () => {
+    expect(await voting.candidatesCount()).to.equal(3);
   });
 
-  // TEST 4
-  it("Không thể bỏ phiếu 2 lần", async function () {
-    await voting.connect(voter1).vote(1);
-    await expect(
-      voting.connect(voter1).vote(2)
-    ).to.be.revertedWith("Ban da bo phieu roi!");
+  // ── Admin: thêm ứng viên ───────────────────────────
+  it("4. Thêm ứng viên trước khi start", async () => {
+    await voting.addCandidate("Ung vien D");
+    expect(await voting.candidatesCount()).to.equal(4);
   });
 
-  // TEST 5
-  it("Không thể bỏ phiếu cho ứng viên không tồn tại", async function () {
-    await expect(
-      voting.connect(voter1).vote(99)
-    ).to.be.revertedWith("Ung vien khong hop le");
+  it("5. Người khác không thêm được ứng viên", async () => {
+    await expect(voting.connect(addr1).addCandidate("Hack"))
+      .to.be.revertedWith("Chi chu so huu moi duoc goi");
   });
 
-  // TEST 6
-  it("Chỉ owner mới thêm được ứng viên", async function () {
-    await expect(
-      voting.connect(voter1).addCandidate("Ung vien D")
-    ).to.be.revertedWith("Chi chu so huu moi duoc goi");
+  // ── Admin: startElection ───────────────────────────
+  it("6. Start bầu cử thành công", async () => {
+    await voting.startElection(3600);
+    expect(await voting.isActive()).to.equal(true);
   });
 
-  // TEST 7
-  it("getAllCandidates trả về đúng danh sách", async function () {
-    const all = await voting.getAllCandidates();
-    expect(all.length).to.equal(3);
-    expect(all[0].name).to.equal("Ung vien A");
-    expect(all[2].name).to.equal("Ung vien C");
+  it("7. Không thêm ứng viên khi đang bầu cử", async () => {
+    await voting.startElection(3600);
+    await expect(voting.addCandidate("Ung vien D"))
+      .to.be.revertedWith("Khong the them ung vien khi dang bau cu");
+  });
+
+  it("8. Không vote khi chưa start", async () => {
+    await expect(voting.connect(addr1).vote(1))
+      .to.be.revertedWith("Bau cu chua bat dau hoac da ket thuc");
+  });
+
+  // ── Vote ────────────────────────────────────────────
+  it("9. Vote thành công sau khi start", async () => {
+    await voting.startElection(3600);
+    await voting.connect(addr1).vote(1);
+    const c = await voting.candidates(1);
+    expect(c.voteCount).to.equal(1);
+  });
+
+  it("10. Không vote 2 lần", async () => {
+    await voting.startElection(3600);
+    await voting.connect(addr1).vote(1);
+    await expect(voting.connect(addr1).vote(1))
+      .to.be.revertedWith("Ban da bo phieu roi!");
+  });
+
+  it("11. Ứng viên không hợp lệ", async () => {
+    await voting.startElection(3600);
+    await expect(voting.connect(addr1).vote(99))
+      .to.be.revertedWith("Ung vien khong hop le");
+  });
+
+  // ── Admin: endElection ─────────────────────────────
+  it("12. Admin kết thúc sớm", async () => {
+    await voting.startElection(3600);
+    await voting.endElection();
+    expect(await voting.isActive()).to.equal(false);
+  });
+
+  it("13. Không vote sau khi kết thúc", async () => {
+    await voting.startElection(3600);
+    await voting.endElection();
+    await expect(voting.connect(addr1).vote(1))
+      .to.be.revertedWith("Bau cu chua bat dau hoac da ket thuc");
+  });
+
+  // ── getElectionInfo ────────────────────────────────
+  it("14. getElectionInfo trả về đúng khi đang chạy", async () => {
+    await voting.startElection(3600);
+    const info = await voting.getElectionInfo();
+    expect(info._isActive).to.equal(true);
+    expect(info._timeLeft).to.be.gt(0);
+    expect(info._totalVotes).to.equal(0);
+  });
+
+  it("15. getElectionInfo timeLeft = 0 sau khi end", async () => {
+    await voting.startElection(3600);
+    await voting.endElection();
+    const info = await voting.getElectionInfo();
+    expect(info._isActive).to.equal(false);
+    expect(info._timeLeft).to.equal(0);
   });
 });

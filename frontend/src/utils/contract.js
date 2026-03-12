@@ -1,6 +1,6 @@
 import { ethers } from "ethers";
 
-export const CONTRACT_ADDRESS = "0x81778A172ee9D23ae22f6BE381ce9670b1BB4E86";
+export const CONTRACT_ADDRESS = "0xDc42de6B62f285029b1e0f4592A53aD1e6BD3Ea0";
 
 export const CONTRACT_ABI = [
   { "inputs": [], "stateMutability": "nonpayable", "type": "constructor" },
@@ -11,6 +11,12 @@ export const CONTRACT_ABI = [
       { "indexed": false, "internalType": "string", "name": "name", "type": "string" }
     ],
     "name": "CandidateAdded", "type": "event"
+  },
+  { "anonymous": false, "inputs": [], "name": "ElectionEnded", "type": "event" },
+  {
+    "anonymous": false,
+    "inputs": [{ "indexed": false, "internalType": "uint256", "name": "deadline", "type": "uint256" }],
+    "name": "ElectionStarted", "type": "event"
   },
   {
     "anonymous": false,
@@ -40,6 +46,12 @@ export const CONTRACT_ABI = [
     "stateMutability": "view", "type": "function"
   },
   {
+    "inputs": [], "name": "deadline",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "stateMutability": "view", "type": "function"
+  },
+  { "inputs": [], "name": "endElection", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+  {
     "inputs": [], "name": "getAllCandidates",
     "outputs": [{
       "components": [
@@ -52,8 +64,23 @@ export const CONTRACT_ABI = [
     "stateMutability": "view", "type": "function"
   },
   {
+    "inputs": [], "name": "getElectionInfo",
+    "outputs": [
+      { "internalType": "bool",    "name": "_isActive",   "type": "bool"    },
+      { "internalType": "uint256", "name": "_deadline",   "type": "uint256" },
+      { "internalType": "uint256", "name": "_timeLeft",   "type": "uint256" },
+      { "internalType": "uint256", "name": "_totalVotes", "type": "uint256" }
+    ],
+    "stateMutability": "view", "type": "function"
+  },
+  {
     "inputs": [{ "internalType": "address", "name": "", "type": "address" }],
     "name": "hasVoted",
+    "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+    "stateMutability": "view", "type": "function"
+  },
+  {
+    "inputs": [], "name": "isActive",
     "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
     "stateMutability": "view", "type": "function"
   },
@@ -61,6 +88,10 @@ export const CONTRACT_ABI = [
     "inputs": [], "name": "owner",
     "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
     "stateMutability": "view", "type": "function"
+  },
+  {
+    "inputs": [{ "internalType": "uint256", "name": "_durationSeconds", "type": "uint256" }],
+    "name": "startElection", "outputs": [], "stateMutability": "nonpayable", "type": "function"
   },
   {
     "inputs": [{ "internalType": "uint256", "name": "_candidateId", "type": "uint256" }],
@@ -73,10 +104,8 @@ const ALCHEMY_KEY      = "rgMwviFT2aroOcmtf6s1a";
 const SEPOLIA_WSS      = `wss://eth-sepolia.g.alchemy.com/v2/${ALCHEMY_KEY}`;
 const SEPOLIA_RPC      = `https://eth-sepolia.g.alchemy.com/v2/${ALCHEMY_KEY}`;
 
-// Kết nối MetaMask + tự chuyển sang Sepolia
 export async function connectWallet() {
   if (!window.ethereum) throw new Error("MetaMask chưa được cài! Vào metamask.io để tải.");
-
   try {
     await window.ethereum.request({
       method: "wallet_switchEthereumChain",
@@ -94,28 +123,25 @@ export async function connectWallet() {
           blockExplorerUrls: ["https://sepolia.etherscan.io"],
         }],
       });
-    } else {
-      throw switchError;
-    }
+    } else throw switchError;
   }
-
   const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
   return accounts[0];
 }
 
-// ✅ WebSocket — lắng nghe events real-time (dùng trong useEffect)
+// WebSocket — lắng nghe events real-time
 export function getContract() {
   const provider = new ethers.WebSocketProvider(SEPOLIA_WSS);
   return new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
 }
 
-// ✅ HTTP — đọc data nhanh (load candidates, checkVoted)
+// HTTP — đọc data nhanh
 export function getReadContract() {
   const provider = new ethers.JsonRpcProvider(SEPOLIA_RPC);
   return new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
 }
 
-// ✅ MetaMask — ký và gửi transaction (vote)
+// MetaMask — ký transaction
 export async function getSignedContract() {
   const provider = new ethers.BrowserProvider(window.ethereum);
   const signer   = await provider.getSigner();
