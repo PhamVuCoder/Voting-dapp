@@ -6,6 +6,7 @@ contract Voting {
         uint id;
         string name;
         uint voteCount;
+        bool isHidden;
     }
 
     mapping(uint => Candidate) public candidates;
@@ -17,6 +18,8 @@ contract Voting {
 
     event Voted(address indexed voter, uint indexed candidateId);
     event CandidateAdded(uint id, string name);
+    event CandidateHidden(uint id);
+    event CandidateShown(uint id);
     event ElectionStarted(uint deadline);
     event ElectionEnded();
 
@@ -41,13 +44,27 @@ contract Voting {
 
     function _addCandidate(string memory _name) internal {
         candidatesCount++;
-        candidates[candidatesCount] = Candidate(candidatesCount, _name, 0);
+        candidates[candidatesCount] = Candidate(candidatesCount, _name, 0, false);
         emit CandidateAdded(candidatesCount, _name);
     }
 
     function addCandidate(string memory _name) public onlyOwner {
         require(!isActive, "Khong the them ung vien khi dang bau cu");
         _addCandidate(_name);
+    }
+
+    function hideCandidate(uint _id) public onlyOwner {
+        require(_id > 0 && _id <= candidatesCount, "Ung vien khong hop le");
+        require(!candidates[_id].isHidden, "Ung vien da duoc an roi");
+        candidates[_id].isHidden = true;
+        emit CandidateHidden(_id);
+    }
+
+    function showCandidate(uint _id) public onlyOwner {
+        require(_id > 0 && _id <= candidatesCount, "Ung vien khong hop le");
+        require(candidates[_id].isHidden, "Ung vien dang hien thi roi");
+        candidates[_id].isHidden = false;
+        emit CandidateShown(_id);
     }
 
     function startElection(uint _durationSeconds) public onlyOwner {
@@ -68,6 +85,7 @@ contract Voting {
     function vote(uint _candidateId) public electionOpen {
         require(!hasVoted[msg.sender], "Ban da bo phieu roi!");
         require(_candidateId > 0 && _candidateId <= candidatesCount, "Ung vien khong hop le");
+        require(!candidates[_candidateId].isHidden, "Ung vien nay da bi an");
         hasVoted[msg.sender] = true;
         candidates[_candidateId].voteCount++;
         emit Voted(msg.sender, _candidateId);
@@ -81,6 +99,19 @@ contract Voting {
         return result;
     }
 
+    function getActiveCandidates() public view returns (Candidate[] memory) {
+        uint count = 0;
+        for (uint i = 1; i <= candidatesCount; i++) {
+            if (!candidates[i].isHidden) count++;
+        }
+        Candidate[] memory result = new Candidate[](count);
+        uint idx = 0;
+        for (uint i = 1; i <= candidatesCount; i++) {
+            if (!candidates[i].isHidden) result[idx++] = candidates[i];
+        }
+        return result;
+    }
+
     function getElectionInfo() public view returns (
         bool _isActive, uint _deadline, uint _timeLeft, uint _totalVotes
     ) {
@@ -88,7 +119,9 @@ contract Voting {
         _deadline = deadline;
         _timeLeft = (isActive && block.timestamp < deadline) ? deadline - block.timestamp : 0;
         uint total = 0;
-        for (uint i = 1; i <= candidatesCount; i++) { total += candidates[i].voteCount; }
+        for (uint i = 1; i <= candidatesCount; i++) {
+            if (!candidates[i].isHidden) total += candidates[i].voteCount;
+        }
         _totalVotes = total;
     }
 }

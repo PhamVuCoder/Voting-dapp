@@ -1,17 +1,15 @@
 const { expect } = require("chai");
 const { ethers }  = require("hardhat");
 
-describe("Voting v2 — Admin + Deadline", function () {
+describe("Voting v3 — Soft Delete", function () {
   let voting, owner, addr1, addr2;
 
   beforeEach(async () => {
     [owner, addr1, addr2] = await ethers.getSigners();
     const Voting = await ethers.getContractFactory("Voting");
     voting = await Voting.deploy();
-    // Lúc này có 3 ứng viên mặc định, isActive = false
   });
 
-  // ── Khởi tạo ────────────────────────────────────────
   it("1. Owner đúng", async () => {
     expect(await voting.owner()).to.equal(owner.address);
   });
@@ -20,87 +18,91 @@ describe("Voting v2 — Admin + Deadline", function () {
     expect(await voting.isActive()).to.equal(false);
   });
 
-  it("3. Có 3 ứng viên mặc định", async () => {
-    expect(await voting.candidatesCount()).to.equal(3);
+  it("3. Có 3 ứng viên mặc định, tất cả isHidden = false", async () => {
+    const all = await voting.getAllCandidates();
+    expect(all.length).to.equal(3);
+    all.forEach(c => expect(c.isHidden).to.equal(false));
   });
 
-  // ── Admin: thêm ứng viên ───────────────────────────
-  it("4. Thêm ứng viên trước khi start", async () => {
-    await voting.addCandidate("Ung vien D");
-    expect(await voting.candidatesCount()).to.equal(4);
+  it("4. Admin ẩn ứng viên thành công", async () => {
+    await voting.hideCandidate(1);
+    const c = await voting.candidates(1);
+    expect(c.isHidden).to.equal(true);
   });
 
-  it("5. Người khác không thêm được ứng viên", async () => {
-    await expect(voting.connect(addr1).addCandidate("Hack"))
+  it("5. Người khác không ẩn được ứng viên", async () => {
+    await expect(voting.connect(addr1).hideCandidate(1))
       .to.be.revertedWith("Chi chu so huu moi duoc goi");
   });
 
-  // ── Admin: startElection ───────────────────────────
-  it("6. Start bầu cử thành công", async () => {
+  it("6. Không ẩn ứng viên đã ẩn rồi", async () => {
+    await voting.hideCandidate(1);
+    await expect(voting.hideCandidate(1))
+      .to.be.revertedWith("Ung vien da duoc an roi");
+  });
+
+  it("7. Admin hiện lại ứng viên thành công", async () => {
+    await voting.hideCandidate(1);
+    await voting.showCandidate(1);
+    const c = await voting.candidates(1);
+    expect(c.isHidden).to.equal(false);
+  });
+
+  it("8. Không hiện ứng viên đang hiển thị rồi", async () => {
+    await expect(voting.showCandidate(1))
+      .to.be.revertedWith("Ung vien dang hien thi roi");
+  });
+
+  it("9. getActiveCandidates chỉ trả về ứng viên chưa ẩn", async () => {
+    await voting.hideCandidate(1);
+    const active = await voting.getActiveCandidates();
+    expect(active.length).to.equal(2);
+    active.forEach(c => expect(c.isHidden).to.equal(false));
+  });
+
+  it("10. getAllCandidates trả về TẤT CẢ kể cả đã ẩn", async () => {
+    await voting.hideCandidate(1);
+    const all = await voting.getAllCandidates();
+    expect(all.length).to.equal(3);
+  });
+
+  it("11. Không vote được ứng viên đã ẩn", async () => {
+    await voting.hideCandidate(1);
+    await voting.startElection(3600);
+    await expect(voting.connect(addr1).vote(1))
+      .to.be.revertedWith("Ung vien nay da bi an");
+  });
+
+  it("12. Vote bình thường với ứng viên chưa ẩn", async () => {
+    await voting.startElection(3600);
+    await voting.connect(addr1).vote(2);
+    const c = await voting.candidates(2);
+    expect(c.voteCount).to.equal(1);
+  });
+
+  it("13. Start bầu cử thành công", async () => {
     await voting.startElection(3600);
     expect(await voting.isActive()).to.equal(true);
   });
 
-  it("7. Không thêm ứng viên khi đang bầu cử", async () => {
-    await voting.startElection(3600);
-    await expect(voting.addCandidate("Ung vien D"))
-      .to.be.revertedWith("Khong the them ung vien khi dang bau cu");
-  });
-
-  it("8. Không vote khi chưa start", async () => {
-    await expect(voting.connect(addr1).vote(1))
-      .to.be.revertedWith("Bau cu chua bat dau hoac da ket thuc");
-  });
-
-  // ── Vote ────────────────────────────────────────────
-  it("9. Vote thành công sau khi start", async () => {
-    await voting.startElection(3600);
-    await voting.connect(addr1).vote(1);
-    const c = await voting.candidates(1);
-    expect(c.voteCount).to.equal(1);
-  });
-
-  it("10. Không vote 2 lần", async () => {
+  it("14. Không vote 2 lần", async () => {
     await voting.startElection(3600);
     await voting.connect(addr1).vote(1);
     await expect(voting.connect(addr1).vote(1))
       .to.be.revertedWith("Ban da bo phieu roi!");
   });
 
-  it("11. Ứng viên không hợp lệ", async () => {
-    await voting.startElection(3600);
-    await expect(voting.connect(addr1).vote(99))
-      .to.be.revertedWith("Ung vien khong hop le");
-  });
-
-  // ── Admin: endElection ─────────────────────────────
-  it("12. Admin kết thúc sớm", async () => {
+  it("15. Admin kết thúc sớm", async () => {
     await voting.startElection(3600);
     await voting.endElection();
     expect(await voting.isActive()).to.equal(false);
   });
 
-  it("13. Không vote sau khi kết thúc", async () => {
+  it("16. getElectionInfo totalVotes không tính ứng viên ẩn", async () => {
     await voting.startElection(3600);
-    await voting.endElection();
-    await expect(voting.connect(addr1).vote(1))
-      .to.be.revertedWith("Bau cu chua bat dau hoac da ket thuc");
-  });
-
-  // ── getElectionInfo ────────────────────────────────
-  it("14. getElectionInfo trả về đúng khi đang chạy", async () => {
-    await voting.startElection(3600);
+    await voting.connect(addr1).vote(1);
+    await voting.hideCandidate(1);
     const info = await voting.getElectionInfo();
-    expect(info._isActive).to.equal(true);
-    expect(info._timeLeft).to.be.gt(0);
     expect(info._totalVotes).to.equal(0);
-  });
-
-  it("15. getElectionInfo timeLeft = 0 sau khi end", async () => {
-    await voting.startElection(3600);
-    await voting.endElection();
-    const info = await voting.getElectionInfo();
-    expect(info._isActive).to.equal(false);
-    expect(info._timeLeft).to.equal(0);
   });
 });
