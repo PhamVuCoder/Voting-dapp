@@ -1,6 +1,6 @@
 import { ethers } from "ethers";
 
-export const CONTRACT_ADDRESS = "0xDc42de6B62f285029b1e0f4592A53aD1e6BD3Ea0";
+export const CONTRACT_ADDRESS = "0xF74f589db0A5f832204Ee45b1AE5436D030D96a2";
 
 export const CONTRACT_ABI = [
   { "inputs": [], "stateMutability": "nonpayable", "type": "constructor" },
@@ -11,6 +11,16 @@ export const CONTRACT_ABI = [
       { "indexed": false, "internalType": "string", "name": "name", "type": "string" }
     ],
     "name": "CandidateAdded", "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [{ "indexed": false, "internalType": "uint256", "name": "id", "type": "uint256" }],
+    "name": "CandidateHidden", "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [{ "indexed": false, "internalType": "uint256", "name": "id", "type": "uint256" }],
+    "name": "CandidateShown", "type": "event"
   },
   { "anonymous": false, "inputs": [], "name": "ElectionEnded", "type": "event" },
   {
@@ -27,16 +37,13 @@ export const CONTRACT_ABI = [
     "name": "Voted", "type": "event"
   },
   {
-    "inputs": [{ "internalType": "string", "name": "_name", "type": "string" }],
-    "name": "addCandidate", "outputs": [], "stateMutability": "nonpayable", "type": "function"
-  },
-  {
     "inputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
     "name": "candidates",
     "outputs": [
       { "internalType": "uint256", "name": "id", "type": "uint256" },
       { "internalType": "string", "name": "name", "type": "string" },
-      { "internalType": "uint256", "name": "voteCount", "type": "uint256" }
+      { "internalType": "uint256", "name": "voteCount", "type": "uint256" },
+      { "internalType": "bool", "name": "isHidden", "type": "bool" }
     ],
     "stateMutability": "view", "type": "function"
   },
@@ -50,17 +57,14 @@ export const CONTRACT_ABI = [
     "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
     "stateMutability": "view", "type": "function"
   },
-  { "inputs": [], "name": "endElection", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
   {
-    "inputs": [], "name": "getAllCandidates",
-    "outputs": [{
-      "components": [
-        { "internalType": "uint256", "name": "id", "type": "uint256" },
-        { "internalType": "string", "name": "name", "type": "string" },
-        { "internalType": "uint256", "name": "voteCount", "type": "uint256" }
-      ],
-      "internalType": "struct Voting.Candidate[]", "name": "", "type": "tuple[]"
-    }],
+    "inputs": [], "name": "getActiveCandidates",
+    "outputs": [{ "components": [
+      { "internalType": "uint256", "name": "id", "type": "uint256" },
+      { "internalType": "string", "name": "name", "type": "string" },
+      { "internalType": "uint256", "name": "voteCount", "type": "uint256" },
+      { "internalType": "bool", "name": "isHidden", "type": "bool" }
+    ], "internalType": "struct Voting.Candidate[]", "name": "", "type": "tuple[]" }],
     "stateMutability": "view", "type": "function"
   },
   {
@@ -90,10 +94,6 @@ export const CONTRACT_ABI = [
     "stateMutability": "view", "type": "function"
   },
   {
-    "inputs": [{ "internalType": "uint256", "name": "_durationSeconds", "type": "uint256" }],
-    "name": "startElection", "outputs": [], "stateMutability": "nonpayable", "type": "function"
-  },
-  {
     "inputs": [{ "internalType": "uint256", "name": "_candidateId", "type": "uint256" }],
     "name": "vote", "outputs": [], "stateMutability": "nonpayable", "type": "function"
   }
@@ -111,8 +111,8 @@ export async function connectWallet() {
       method: "wallet_switchEthereumChain",
       params: [{ chainId: SEPOLIA_CHAIN_ID }],
     });
-  } catch (switchError) {
-    if (switchError.code === 4902) {
+  } catch (e) {
+    if (e.code === 4902) {
       await window.ethereum.request({
         method: "wallet_addEthereumChain",
         params: [{
@@ -123,19 +123,19 @@ export async function connectWallet() {
           blockExplorerUrls: ["https://sepolia.etherscan.io"],
         }],
       });
-    } else throw switchError;
+    } else throw e;
   }
   const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
   return accounts[0];
 }
 
-// WebSocket — lắng nghe events real-time
+// WebSocket — lắng nghe events realtime
 export function getContract() {
   const provider = new ethers.WebSocketProvider(SEPOLIA_WSS);
   return new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
 }
 
-// HTTP — đọc data nhanh
+// HTTP — đọc data
 export function getReadContract() {
   const provider = new ethers.JsonRpcProvider(SEPOLIA_RPC);
   return new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);

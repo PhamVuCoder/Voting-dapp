@@ -4,7 +4,6 @@ import "./App.css";
 
 const CANDIDATE_EMOJIS = ["🔵", "🔴", "🟢", "🟡", "🟣"];
 
-// Format giây → "2 ngày 03:45:12"
 function formatTimeLeft(seconds) {
   if (seconds <= 0) return "Đã kết thúc";
   const d = Math.floor(seconds / 86400);
@@ -17,7 +16,6 @@ function formatTimeLeft(seconds) {
 
 function App() {
   const [account, setAccount]       = useState(null);
-  const [isOwner, setIsOwner]       = useState(false);
   const [candidates, setCandidates] = useState([]);
   const [hasVoted, setHasVoted]     = useState(false);
   const [isVoting, setIsVoting]     = useState(false);
@@ -26,21 +24,11 @@ function App() {
   const [txHash, setTxHash]         = useState("");
   const [isLoading, setIsLoading]   = useState(true);
   const [newVoteId, setNewVoteId]   = useState(null);
-
-  // Election info
   const [electionActive, setElectionActive] = useState(false);
-  const [timeLeft, setTimeLeft]             = useState(0);
-
-  // Admin panel
-  const [newCandidateName, setNewCandidateName] = useState("");
-  const [durationDays, setDurationDays]         = useState(7);
-  const [adminMsg, setAdminMsg]                 = useState({ text: "", type: "" });
-  const [isAdminLoading, setIsAdminLoading]     = useState(false);
-  const [showAdmin, setShowAdmin]               = useState(false);
-
+  const [timeLeft, setTimeLeft]     = useState(0);
   const timerRef = useRef(null);
 
-  // ── Load election info + candidates ────────────────────
+  // ── Load data ───────────────────────────────────────────
   const loadAll = useCallback(async () => {
     try {
       const contract = getReadContract();
@@ -63,27 +51,18 @@ function App() {
 
   const checkVoted = useCallback(async (addr) => {
     try {
-      const contract = getReadContract();
-      const [voted, owner] = await Promise.all([
-        contract.hasVoted(addr),
-        contract.owner(),
-      ]);
+      const voted = await getReadContract().hasVoted(addr);
       setHasVoted(voted);
-      setIsOwner(owner.toLowerCase() === addr.toLowerCase());
     } catch (err) { console.error(err); }
   }, []);
 
-  // ── Đồng hồ đếm ngược ──────────────────────────────────
+  // ── Countdown ───────────────────────────────────────────
   useEffect(() => {
     if (timerRef.current) clearInterval(timerRef.current);
     if (electionActive && timeLeft > 0) {
       timerRef.current = setInterval(() => {
         setTimeLeft(t => {
-          if (t <= 1) {
-            clearInterval(timerRef.current);
-            setElectionActive(false);
-            return 0;
-          }
+          if (t <= 1) { clearInterval(timerRef.current); setElectionActive(false); return 0; }
           return t - 1;
         });
       }, 1000);
@@ -91,7 +70,7 @@ function App() {
     return () => clearInterval(timerRef.current);
   }, [electionActive, timeLeft]);
 
-  // ── Kết nối MetaMask ────────────────────────────────────
+  // ── Connect wallet ──────────────────────────────────────
   const handleConnect = async () => {
     setMessage({ text: "", type: "" });
     try {
@@ -103,7 +82,7 @@ function App() {
     }
   };
 
-  // ── Bỏ phiếu ───────────────────────────────────────────
+  // ── Vote ────────────────────────────────────────────────
   const handleVote = async (candidateId) => {
     if (!account) { setMessage({ text: "⚠️ Hãy kết nối ví trước!", type: "warn" }); return; }
     setIsVoting(true); setVotingId(candidateId);
@@ -126,75 +105,29 @@ function App() {
     } finally { setIsVoting(false); setVotingId(null); }
   };
 
-  // ── Admin: thêm ứng viên ────────────────────────────────
-  const handleAddCandidate = async () => {
-    if (!newCandidateName.trim()) return;
-    setIsAdminLoading(true);
-    setAdminMsg({ text: "⏳ Đang thêm ứng viên...", type: "info" });
-    try {
-      const contract = await getSignedContract();
-      const tx = await contract.addCandidate(newCandidateName.trim());
-      await tx.wait();
-      setNewCandidateName("");
-      setAdminMsg({ text: "✅ Đã thêm ứng viên!", type: "success" });
-      await loadAll();
-    } catch (err) {
-      setAdminMsg({ text: "❌ " + (err.reason || err.message), type: "error" });
-    } finally { setIsAdminLoading(false); }
-  };
-
-  // ── Admin: bắt đầu bầu cử ──────────────────────────────
-  const handleStartElection = async () => {
-    setIsAdminLoading(true);
-    setAdminMsg({ text: "⏳ Đang bắt đầu bầu cử...", type: "info" });
-    try {
-      const contract = await getSignedContract();
-      const seconds = durationDays * 24 * 3600;
-      const tx = await contract.startElection(seconds);
-      await tx.wait();
-      setAdminMsg({ text: `✅ Bầu cử đã bắt đầu! Thời gian: ${durationDays} ngày`, type: "success" });
-      await loadAll();
-    } catch (err) {
-      setAdminMsg({ text: "❌ " + (err.reason || err.message), type: "error" });
-    } finally { setIsAdminLoading(false); }
-  };
-
-  // ── Admin: kết thúc sớm ─────────────────────────────────
-  const handleEndElection = async () => {
-    if (!window.confirm("Kết thúc bầu cử sớm? Không thể hoàn tác!")) return;
-    setIsAdminLoading(true);
-    setAdminMsg({ text: "⏳ Đang kết thúc bầu cử...", type: "info" });
-    try {
-      const contract = await getSignedContract();
-      const tx = await contract.endElection();
-      await tx.wait();
-      setAdminMsg({ text: "✅ Đã kết thúc bầu cử!", type: "success" });
-      await loadAll();
-    } catch (err) {
-      setAdminMsg({ text: "❌ " + (err.reason || err.message), type: "error" });
-    } finally { setIsAdminLoading(false); }
-  };
-
-  // ── Init ────────────────────────────────────────────────
+  // ── Init + realtime ─────────────────────────────────────
   useEffect(() => {
     loadAll();
-    const wsContract = getContract();
-    wsContract.on("Voted", (voter, candidateId) => {
+    const ws = getContract();
+    ws.on("Voted", (voter, candidateId) => {
       loadAll();
       setNewVoteId(Number(candidateId));
       setTimeout(() => setNewVoteId(null), 2000);
     });
-    wsContract.on("ElectionStarted", () => loadAll());
-    wsContract.on("ElectionEnded",   () => loadAll());
+    ws.on("ElectionStarted", () => loadAll());
+    ws.on("ElectionEnded",   () => loadAll());
+    ws.on("CandidateAdded",  () => loadAll());
+    ws.on("CandidateHidden", () => loadAll());
+    ws.on("CandidateShown",  () => loadAll());
 
     if (window.ethereum) {
       window.ethereum.on("accountsChanged", async (accounts) => {
-        if (!accounts.length) { setAccount(null); setHasVoted(false); setIsOwner(false); }
+        if (!accounts.length) { setAccount(null); setHasVoted(false); }
         else { setAccount(accounts[0]); await checkVoted(accounts[0]); }
       });
       window.ethereum.on("chainChanged", () => window.location.reload());
     }
-    return () => wsContract.removeAllListeners();
+    return () => ws.removeAllListeners();
   }, [loadAll, checkVoted]);
 
   const totalVotes = candidates.reduce((sum, c) => sum + c.votes, 0);
@@ -211,108 +144,18 @@ function App() {
               <p className="network-badge">🟢 Sepolia Testnet</p>
             </div>
           </div>
-          <div className="header-right">
-            {isOwner && (
-              <button
-                className="btn-admin"
-                onClick={() => setShowAdmin(s => !s)}
-              >
-                ⚙️ Admin
-              </button>
-            )}
-            {account ? (
-              <div className="wallet-connected">
-                <span className="pulse-dot" />
-                {account.slice(0,6)}…{account.slice(-4)}
-                {isOwner && <span className="owner-tag">👑</span>}
-              </div>
-            ) : (
-              <button className="btn-connect" onClick={handleConnect}>
-                🦊 Kết nối MetaMask
-              </button>
-            )}
-          </div>
+          {account ? (
+            <div className="wallet-connected">
+              <span className="pulse-dot" />
+              {account.slice(0,6)}…{account.slice(-4)}
+            </div>
+          ) : (
+            <button className="btn-connect" onClick={handleConnect}>
+              🦊 Kết nối MetaMask
+            </button>
+          )}
         </div>
       </header>
-
-      {/* ── Admin Panel ────────────────────────────────── */}
-      {showAdmin && isOwner && (
-        <div className="admin-panel">
-          <div className="admin-inner">
-            <h3>⚙️ Admin Panel</h3>
-            <div className="admin-grid">
-
-              {/* Thêm ứng viên */}
-              {!electionActive && (
-                <div className="admin-card">
-                  <h4>➕ Thêm ứng viên</h4>
-                  <div className="admin-row">
-                    <input
-                      type="text"
-                      placeholder="Tên ứng viên..."
-                      value={newCandidateName}
-                      onChange={e => setNewCandidateName(e.target.value)}
-                      onKeyDown={e => e.key === "Enter" && handleAddCandidate()}
-                      className="admin-input"
-                    />
-                    <button
-                      className="btn-admin-action"
-                      onClick={handleAddCandidate}
-                      disabled={isAdminLoading || !newCandidateName.trim()}
-                    >
-                      Thêm
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Bắt đầu bầu cử */}
-              {!electionActive && (
-                <div className="admin-card">
-                  <h4>🚀 Bắt đầu bầu cử</h4>
-                  <div className="admin-row">
-                    <input
-                      type="number"
-                      min="1" max="30"
-                      value={durationDays}
-                      onChange={e => setDurationDays(Number(e.target.value))}
-                      className="admin-input admin-input--short"
-                    />
-                    <span className="admin-label">ngày</span>
-                    <button
-                      className="btn-admin-action btn-admin-action--green"
-                      onClick={handleStartElection}
-                      disabled={isAdminLoading || candidates.length === 0}
-                    >
-                      Bắt đầu
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Kết thúc sớm */}
-              {electionActive && (
-                <div className="admin-card">
-                  <h4>🛑 Kết thúc sớm</h4>
-                  <button
-                    className="btn-admin-action btn-admin-action--red"
-                    onClick={handleEndElection}
-                    disabled={isAdminLoading}
-                  >
-                    Kết thúc bầu cử
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {adminMsg.text && (
-              <div className={`message message--${adminMsg.type}`}>
-                {adminMsg.text}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* ── Main ───────────────────────────────────────── */}
       <main className="main">
@@ -320,7 +163,6 @@ function App() {
           <h2>Bỏ phiếu bầu cử</h2>
           <p>Mỗi địa chỉ ví chỉ được bỏ 1 phiếu • Kết quả minh bạch trên blockchain</p>
 
-          {/* Đồng hồ đếm ngược */}
           {electionActive && timeLeft > 0 && (
             <div className="countdown">
               <span className="countdown-label">⏰ Còn lại</span>
@@ -328,9 +170,7 @@ function App() {
             </div>
           )}
           {!electionActive && !isLoading && (
-            <div className="election-closed">
-              🔒 Bầu cử chưa bắt đầu hoặc đã kết thúc
-            </div>
+            <div className="election-closed">🔒 Bầu cử chưa bắt đầu hoặc đã kết thúc</div>
           )}
           {totalVotes > 0 && (
             <p className="total-votes">Tổng cộng: <strong>{totalVotes} phiếu</strong></p>
@@ -347,21 +187,17 @@ function App() {
             {hasVoted && (
               <div className="voted-banner">✅ Bạn đã bỏ phiếu! Cảm ơn bạn đã tham gia.</div>
             )}
-
             <div className="candidates-grid">
               {candidates.map((c, i) => {
-                const pct = totalVotes > 0 ? ((c.votes / totalVotes) * 100).toFixed(1) : 0;
+                const pct        = totalVotes > 0 ? ((c.votes / totalVotes) * 100).toFixed(1) : 0;
                 const isWinning  = totalVotes > 0 && c.votes === Math.max(...candidates.map(x => x.votes)) && c.votes > 0;
                 const isFlashing = newVoteId === c.id;
-
                 return (
                   <div key={c.id} className={["card", isWinning ? "card--winning" : "", isFlashing ? "card--flash" : ""].join(" ")}>
                     {isWinning  && <div className="winning-badge">👑 Đang dẫn đầu</div>}
                     {isFlashing && <div className="new-vote-badge">⚡ Vừa có phiếu mới!</div>}
-
                     <div className="card-emoji">{CANDIDATE_EMOJIS[i] || "🔵"}</div>
                     <h3 className="card-name">{c.name}</h3>
-
                     <div className="vote-stats">
                       <span className="vote-count">{c.votes} phiếu</span>
                       <span className="vote-pct">{pct}%</span>
@@ -369,7 +205,6 @@ function App() {
                     <div className="progress-wrap">
                       <div className="progress-bar" style={{ width: `${pct}%` }} />
                     </div>
-
                     {account && !hasVoted && electionActive && (
                       <button
                         className={`btn-vote ${isVoting && votingId === c.id ? "btn-vote--loading" : ""}`}
@@ -405,8 +240,12 @@ function App() {
 
       <footer className="footer">
         Contract:{" "}
-        <a href={`https://sepolia.etherscan.io/address/${"0xF74f589db0A5f832204Ee45b1AE5436D030D96a2"}`} target="_blank" rel="noreferrer">
+        <a href={`https://sepolia.etherscan.io/address/0xF74f589db0A5f832204Ee45b1AE5436D030D96a2`} target="_blank" rel="noreferrer">
           0xF74f…a2 ↗
+        </a>
+        {" · "}
+        <a href="https://voting-dapp-adir.vercel.app" target="_blank" rel="noreferrer">
+          ⚙️ Admin ↗
         </a>
       </footer>
     </div>
