@@ -45,7 +45,7 @@ function App() {
     try {
       const contract = getReadContract();
       const [raw, info] = await Promise.all([
-        contract.getAllCandidates(),
+        contract.getActiveCandidates(),
         contract.getElectionInfo(),
       ]);
       setCandidates(raw.map(c => ({
@@ -405,8 +405,8 @@ function App() {
 
       <footer className="footer">
         Contract:{" "}
-        <a href={`https://sepolia.etherscan.io/address/${"0xDc42de6B62f285029b1e0f4592A53aD1e6BD3Ea0"}`} target="_blank" rel="noreferrer">
-          0xDc42…Ea0 ↗
+        <a href={`https://sepolia.etherscan.io/address/${"0xF74f589db0A5f832204Ee45b1AE5436D030D96a2"}`} target="_blank" rel="noreferrer">
+          0xF74f…a2 ↗
         </a>
       </footer>
     </div>
