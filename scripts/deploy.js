@@ -1,25 +1,15 @@
-const hre = require("hardhat");
+const { ethers } = require("hardhat");
 
 async function main() {
-  console.log("🚀 Deploying Voting v2...");
+  console.log("Đang deploy Voting contract...");
 
-  const Voting = await hre.ethers.getContractFactory("Voting");
+  const Voting = await ethers.getContractFactory("Voting");
   const voting = await Voting.deploy();
   await voting.waitForDeployment();
 
   const address = await voting.getAddress();
-  console.log("✅ Contract deployed:", address);
-
-  // Bắt đầu bầu cử 7 ngày
-  console.log("⏰ Bắt đầu bầu cử 7 ngày...");
-  const tx = await voting.startElection(7 * 24 * 3600);
-  await tx.wait();
-
-  console.log("🎉 Xong!");
-  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-  console.log("📋 CONTRACT_ADDRESS =", address);
-  console.log("👉 Cập nhật vào: frontend/src/utils/contract.js");
-  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+  console.log(`✅ Contract deployed tại: ${address}`);
+  console.log("👉 Copy địa chỉ này để dùng ở frontend!");
 }
 
 main().catch(console.error);
