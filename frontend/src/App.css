@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
+html, body { width: 100%; overflow-x: hidden; }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -35,7 +36,7 @@ body::before {
   background-size: 100% 100%, 100% 100%, 30px 30px;
 }
 
-.app { min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
+.app { min-height: 100vh; display: flex; flex-direction: column; align-items: center; width: 100%; }
 
 /* Toast */
 .toast-container { position: fixed; top: 1.25rem; right: 1.25rem; z-index: 999; display: flex; flex-direction: column; gap: 10px; max-width: 360px; width: calc(100vw - 2.5rem); }
@@ -72,7 +73,7 @@ body::before {
 .main { width: 100%; max-width: 960px; margin: 0 auto; padding: 3rem 2rem 5rem; flex: 1; }
 
 /* Hero */
-.hero { text-align: center; margin-bottom: 3rem; }
+.hero { text-align: center; margin-bottom: 3rem; width: 100%; }
 .hero-badge { display: inline-block; margin-bottom: 1rem; background: var(--surface2); border: 1px solid var(--border2); padding: 4px 14px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.04em; }
 .hero h2 { font-family: 'Syne', sans-serif; font-size: 3.2rem; font-weight: 800; letter-spacing: -0.05em; line-height: 1.05; margin-bottom: 0.75rem; background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 40%, var(--accent2) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
 .hero > p { color: var(--muted); font-size: 0.95rem; margin-bottom: 1.5rem; }
