@@ -1,41 +1,79 @@
-⛓️ Blockchain Voting DApp
+# ⛓️ Blockchain Voting DApp
 
-🇻🇳 Tiếng Việt | 🇬🇧 English
+> 🇻🇳 **Tiếng Việt** | 🇬🇧 [English](#-english-version)
 
 Ứng dụng bỏ phiếu bầu cử phi tập trung trên nền tảng Ethereum Blockchain — minh bạch, bất biến, không thể gian lận.
-🔗 Links
-URL🌐 User Sitehttps://voting-dapp-silk.vercel.app⚙️ Admin Panelhttps://voting-dapp-adir.vercel.app📋 Smart Contract0xF74f...a2 trên Sepolia Etherscan💻 GitHubhttps://github.com/PhamVuCoder/Voting-dapp
 
-✨ Tính năng
-👥 Người dùng
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Solidity](https://img.shields.io/badge/Solidity-^0.8.24-363636?logo=solidity)](contracts/Voting.sol)
+[![Hardhat](https://img.shields.io/badge/Hardhat-Tests%2016%2F16-yellow?logo=hardhat)](test/)
+[![Vercel](https://img.shields.io/badge/Deployed-Vercel-black?logo=vercel)](https://voting-dapp-silk.vercel.app)
+[![Network](https://img.shields.io/badge/Network-Sepolia%20Testnet-purple)](https://sepolia.etherscan.io/address/0xF74f589db0A5f832204Ee45b1AE5436D030D96a2)
 
-🦊 Kết nối ví MetaMask, tự động chuyển sang Sepolia
-🗳 Bỏ phiếu cho ứng viên — mỗi ví chỉ được 1 phiếu
-⚡ Cập nhật realtime qua Alchemy WebSocket
-👤 Hiển thị ENS (.eth) thay địa chỉ ví
-⏰ Đồng hồ đếm ngược thời gian bầu cử
-🔔 Toast notification đẹp cho mọi hành động
-🔍 Link Etherscan sau khi vote thành công
+---
 
-⚙️ Admin
+## 🔗 Links
 
-➕ Thêm ứng viên (trước khi bầu cử bắt đầu)
-🚫 Ẩn / hiện ứng viên (Soft Delete)
-🚀 Bắt đầu bầu cử với thời gian tuỳ chọn
-🛑 Kết thúc bầu cử sớm
-📊 Dashboard thống kê realtime
-📜 Lịch sử toàn bộ transactions on-chain
+| | URL |
+|--|--|
+| 🌐 **User Site** | https://voting-dapp-silk.vercel.app |
+| ⚙️ **Admin Panel** | https://voting-dapp-adir.vercel.app |
+| 📋 **Smart Contract** | [0xF74f...a2 trên Sepolia Etherscan](https://sepolia.etherscan.io/address/0xF74f589db0A5f832204Ee45b1AE5436D030D96a2) |
+| 💻 **GitHub** | https://github.com/PhamVuCoder/Voting-dapp |
 
+---
 
-🛠 Tech Stack
-Smart Contract
-Công nghệMô tảSolidity ^0.8.24Ngôn ngữ viết smart contractHardhatCompile, test, deployChai + Ethers.jsUnit testing (16/16 passed)Sepolia TestnetMạng blockchain test
-Frontend
-Công nghệMô tảReact 18 + ViteUI frameworkethers.js v6Kết nối blockchainMetaMaskKý transactionAlchemy RPCĐọc dữ liệu từ chainAlchemy WebSocketLắng nghe events realtime
-DevOps
-Công nghệMô tảGitHubVersion controlVercelDeploy frontend (CI/CD tự động)
+## ✨ Tính năng
 
-🏗 Kiến trúc hệ thống
+### 👥 Người dùng
+- 🦊 Kết nối ví MetaMask, tự động chuyển sang Sepolia
+- 🗳 Bỏ phiếu cho ứng viên — mỗi ví chỉ được 1 phiếu
+- ⚡ Cập nhật realtime qua Alchemy WebSocket
+- 👤 Hiển thị ENS (`.eth`) thay địa chỉ ví
+- ⏰ Đồng hồ đếm ngược thời gian bầu cử
+- 🔔 Toast notification đẹp cho mọi hành động
+- 🔍 Link Etherscan sau khi vote thành công
+
+### ⚙️ Admin
+- ➕ Thêm ứng viên (trước khi bầu cử bắt đầu)
+- 🚫 Ẩn / hiện ứng viên (Soft Delete)
+- 🚀 Bắt đầu bầu cử với thời gian tuỳ chọn
+- 🛑 Kết thúc bầu cử sớm
+- 📊 Dashboard thống kê realtime
+- 📜 Lịch sử toàn bộ transactions on-chain
+
+---
+
+## 🛠 Tech Stack
+
+### Smart Contract
+| Công nghệ | Mô tả |
+|-----------|-------|
+| Solidity `^0.8.24` | Ngôn ngữ viết smart contract |
+| Hardhat | Compile, test, deploy |
+| Chai + Ethers.js | Unit testing (16/16 passed) |
+| Sepolia Testnet | Mạng blockchain test |
+
+### Frontend
+| Công nghệ | Mô tả |
+|-----------|-------|
+| React 18 + Vite | UI framework |
+| ethers.js v6 | Kết nối blockchain |
+| MetaMask | Ký transaction |
+| Alchemy RPC | Đọc dữ liệu từ chain |
+| Alchemy WebSocket | Lắng nghe events realtime |
+
+### DevOps
+| Công nghệ | Mô tả |
+|-----------|-------|
+| GitHub | Version control |
+| Vercel | Deploy frontend (CI/CD tự động) |
+
+---
+
+## 🏗 Kiến trúc hệ thống
+
+```
 ┌─────────────────┐         ┌─────────────────┐
 │   User Site     │         │   Admin Panel   │
 │ voting-dapp-    │         │ voting-dapp-    │
@@ -54,19 +92,26 @@ Công nghệMô tảGitHubVersion controlVercelDeploy frontend (CI/CD tự độ
          │                    │
     Alchemy RPC          Alchemy WSS
    (HTTP - Read)     (WebSocket - Events)
+```
 
-📦 Cài đặt & Chạy local
-Yêu cầu
+---
 
-Node.js >= 18
-MetaMask extension
-Sepolia ETH (lấy free tại https://sepoliafaucet.com)
+## 📦 Cài đặt & Chạy local
 
-1. Clone repository
-bashgit clone https://github.com/PhamVuCoder/Voting-dapp.git
+### Yêu cầu
+- Node.js >= 18
+- MetaMask extension
+- Sepolia ETH (lấy free tại https://sepoliafaucet.com)
+
+### 1. Clone repository
+```bash
+git clone https://github.com/PhamVuCoder/Voting-dapp.git
 cd Voting-dapp
-2. Cài đặt dependencies
-bash# Root (Hardhat)
+```
+
+### 2. Cài đặt dependencies
+```bash
+# Root (Hardhat)
 npm install
 
 # Frontend
@@ -74,36 +119,85 @@ cd frontend && npm install
 
 # Admin
 cd ../admin && npm install
-3. Cấu hình environment
-bash# Tạo file .env ở thư mục gốc
+```
+
+### 3. Cấu hình environment
+```bash
+# Tạo file .env ở thư mục gốc
 cp .env.example .env
-Điền vào .env:
-envSEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/YOUR_KEY
+```
+
+Điền vào `.env`:
+```env
+SEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/YOUR_KEY
 PRIVATE_KEY=your_wallet_private_key
 ETHERSCAN_API_KEY=your_etherscan_key
-4. Compile & Test
-bashnpx hardhat compile
+```
+
+### 4. Compile & Test
+```bash
+npx hardhat compile
 npx hardhat test
 # ✔ 16/16 tests passing
-5. Deploy contract
-bashnpx hardhat run scripts/deploy.js --network sepolia
-6. Chạy frontend
-bashcd frontend
+```
+
+### 5. Deploy contract
+```bash
+npx hardhat run scripts/deploy.js --network sepolia
+```
+
+### 6. Chạy frontend
+```bash
+cd frontend
 npm run dev
 # → http://localhost:5173
-7. Chạy admin
-bashcd admin
+```
+
+### 7. Chạy admin
+```bash
+cd admin
 npm run dev
 # → http://localhost:5174
+```
 
-🔐 Smart Contract
-Functions
-FunctionAccessMô tảvote(uint id)PublicBỏ phiếu cho ứng viênaddCandidate(string name)OwnerThêm ứng viênhideCandidate(uint id)OwnerẨn ứng viênshowCandidate(uint id)OwnerHiện ứng viênstartElection(uint seconds)OwnerBắt đầu bầu cửendElection()OwnerKết thúc sớmgetAllCandidates()ViewLấy tất cả ứng viêngetActiveCandidates()ViewLấy ứng viên đang hiển thịgetElectionInfo()ViewTrạng thái bầu cử
-Events
-EventKhi nàoVoted(voter, candidateId)Có người voteCandidateAdded(id, name)Thêm ứng viênCandidateHidden(id)Ẩn ứng viênCandidateShown(id)Hiện ứng viênElectionStarted(deadline)Bắt đầu bầu cửElectionEnded()Kết thúc bầu cử
+---
 
-🧪 Tests
-bashnpx hardhat test
+## 🔐 Smart Contract
+
+### Functions
+
+| Function | Access | Mô tả |
+|----------|--------|-------|
+| `vote(uint id)` | Public | Bỏ phiếu cho ứng viên |
+| `addCandidate(string name)` | Owner | Thêm ứng viên |
+| `hideCandidate(uint id)` | Owner | Ẩn ứng viên |
+| `showCandidate(uint id)` | Owner | Hiện ứng viên |
+| `startElection(uint seconds)` | Owner | Bắt đầu bầu cử |
+| `endElection()` | Owner | Kết thúc sớm |
+| `getAllCandidates()` | View | Lấy tất cả ứng viên |
+| `getActiveCandidates()` | View | Lấy ứng viên đang hiển thị |
+| `getElectionInfo()` | View | Trạng thái bầu cử |
+
+### Events
+
+| Event | Khi nào |
+|-------|---------|
+| `Voted(voter, candidateId)` | Có người vote |
+| `CandidateAdded(id, name)` | Thêm ứng viên |
+| `CandidateHidden(id)` | Ẩn ứng viên |
+| `CandidateShown(id)` | Hiện ứng viên |
+| `ElectionStarted(deadline)` | Bắt đầu bầu cử |
+| `ElectionEnded()` | Kết thúc bầu cử |
+
+---
+
+## 🧪 Tests
+
+```bash
+npx hardhat test
+```
+
+```
 Voting v3 — Soft Delete
   ✔ 1.  Owner đúng
   ✔ 2.  Mặc định chưa mở bầu cử
@@ -123,8 +217,13 @@ Voting v3 — Soft Delete
   ✔ 16. getElectionInfo totalVotes không tính ứng viên ẩn
 
 16 passing (936ms)
+```
 
-📁 Cấu trúc project
+---
+
+## 📁 Cấu trúc project
+
+```
 Voting-dapp/
 ├── contracts/
 │   └── Voting.sol          # Smart contract chính
@@ -145,40 +244,50 @@ Voting-dapp/
         ├── App.css
         └── utils/
             └── contract.js
+```
 
-👨‍💻 Tác giả
-Phạm Vũ
+---
 
-GitHub: @PhamVuCoder
+## 👨‍💻 Tác giả
 
+**Phạm Vũ**
+- GitHub: [@PhamVuCoder](https://github.com/PhamVuCoder)
 
+---
 
-🇬🇧 English Version
+---
+
+# 🇬🇧 English Version
+
 A decentralized voting application built on Ethereum Blockchain — transparent, immutable, and tamper-proof.
 
-✨ Features
-Users
+---
 
-🦊 MetaMask wallet connection with auto Sepolia switch
-🗳 Vote for candidates — one vote per wallet address
-⚡ Real-time updates via Alchemy WebSocket
-👤 ENS name resolution (.eth display)
-⏰ Live countdown timer
-🔔 Toast notifications for all actions
-🔍 Etherscan link after successful vote
+## ✨ Features
 
-Admin
+### Users
+- 🦊 MetaMask wallet connection with auto Sepolia switch
+- 🗳 Vote for candidates — one vote per wallet address
+- ⚡ Real-time updates via Alchemy WebSocket
+- 👤 ENS name resolution (`.eth` display)
+- ⏰ Live countdown timer
+- 🔔 Toast notifications for all actions
+- 🔍 Etherscan link after successful vote
 
-➕ Add candidates (before election starts)
-🚫 Hide / show candidates (Soft Delete)
-🚀 Start election with custom duration
-🛑 End election early
-📊 Real-time statistics dashboard
-📜 Full on-chain transaction history
+### Admin
+- ➕ Add candidates (before election starts)
+- 🚫 Hide / show candidates (Soft Delete)
+- 🚀 Start election with custom duration
+- 🛑 End election early
+- 📊 Real-time statistics dashboard
+- 📜 Full on-chain transaction history
 
+---
 
-📦 Installation
-bash# Clone
+## 📦 Installation
+
+```bash
+# Clone
 git clone https://github.com/PhamVuCoder/Voting-dapp.git
 cd Voting-dapp
 
@@ -200,6 +309,10 @@ npx hardhat run scripts/deploy.js --network sepolia
 
 # Run frontend
 cd frontend && npm run dev
+```
 
-📄 License
+---
+
+## 📄 License
+
 MIT © 2026 Phạm Vũ
