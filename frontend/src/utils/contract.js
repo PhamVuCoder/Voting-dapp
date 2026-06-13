@@ -1,6 +1,6 @@
 import { ethers } from "ethers";
 
-export const CONTRACT_ADDRESS = "0xF74f589db0A5f832204Ee45b1AE5436D030D96a2";
+export const CONTRACT_ADDRESS = "0x2b6C241D41D58d3Cc0cAdAb1b27B63770B4F6eFe";
 
 export const CONTRACT_ABI = [
   { "inputs": [], "stateMutability": "nonpayable", "type": "constructor" },
@@ -37,6 +37,10 @@ export const CONTRACT_ABI = [
     "name": "Voted", "type": "event"
   },
   {
+    "inputs": [{ "internalType": "string", "name": "_name", "type": "string" }],
+    "name": "addCandidate", "outputs": [], "stateMutability": "nonpayable", "type": "function"
+  },
+  {
     "inputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
     "name": "candidates",
     "outputs": [
@@ -58,7 +62,23 @@ export const CONTRACT_ABI = [
     "stateMutability": "view", "type": "function"
   },
   {
+    "inputs": [], "name": "electionId",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "stateMutability": "view", "type": "function"
+  },
+  { "inputs": [], "name": "endElection", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+  {
     "inputs": [], "name": "getActiveCandidates",
+    "outputs": [{ "components": [
+      { "internalType": "uint256", "name": "id", "type": "uint256" },
+      { "internalType": "string", "name": "name", "type": "string" },
+      { "internalType": "uint256", "name": "voteCount", "type": "uint256" },
+      { "internalType": "bool", "name": "isHidden", "type": "bool" }
+    ], "internalType": "struct Voting.Candidate[]", "name": "", "type": "tuple[]" }],
+    "stateMutability": "view", "type": "function"
+  },
+  {
+    "inputs": [], "name": "getAllCandidates",
     "outputs": [{ "components": [
       { "internalType": "uint256", "name": "id", "type": "uint256" },
       { "internalType": "string", "name": "name", "type": "string" },
@@ -78,10 +98,14 @@ export const CONTRACT_ABI = [
     "stateMutability": "view", "type": "function"
   },
   {
-    "inputs": [{ "internalType": "address", "name": "", "type": "address" }],
+    "inputs": [{ "internalType": "address", "name": "_voter", "type": "address" }],
     "name": "hasVoted",
     "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
     "stateMutability": "view", "type": "function"
+  },
+  {
+    "inputs": [{ "internalType": "uint256", "name": "_id", "type": "uint256" }],
+    "name": "hideCandidate", "outputs": [], "stateMutability": "nonpayable", "type": "function"
   },
   {
     "inputs": [], "name": "isActive",
@@ -94,8 +118,25 @@ export const CONTRACT_ABI = [
     "stateMutability": "view", "type": "function"
   },
   {
+    "inputs": [{ "internalType": "uint256", "name": "_id", "type": "uint256" }],
+    "name": "showCandidate", "outputs": [], "stateMutability": "nonpayable", "type": "function"
+  },
+  {
+    "inputs": [{ "internalType": "uint256", "name": "_durationSeconds", "type": "uint256" }],
+    "name": "startElection", "outputs": [], "stateMutability": "nonpayable", "type": "function"
+  },
+  {
     "inputs": [{ "internalType": "uint256", "name": "_candidateId", "type": "uint256" }],
     "name": "vote", "outputs": [], "stateMutability": "nonpayable", "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "", "type": "uint256" },
+      { "internalType": "address", "name": "", "type": "address" }
+    ],
+    "name": "votedInElection",
+    "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+    "stateMutability": "view", "type": "function"
   }
 ];
 
@@ -129,19 +170,16 @@ export async function connectWallet() {
   return accounts[0];
 }
 
-// WebSocket — lắng nghe events realtime
 export function getContract() {
   const provider = new ethers.WebSocketProvider(SEPOLIA_WSS);
   return new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
 }
 
-// HTTP — đọc data
 export function getReadContract() {
   const provider = new ethers.JsonRpcProvider(SEPOLIA_RPC);
   return new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
 }
 
-// MetaMask — ký transaction
 export async function getSignedContract() {
   const provider = new ethers.BrowserProvider(window.ethereum);
   const signer   = await provider.getSigner();

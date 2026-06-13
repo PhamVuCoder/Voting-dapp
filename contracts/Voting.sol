@@ -6,86 +6,142 @@ contract Voting {
         uint id;
         string name;
         uint voteCount;
+        bool isHidden;
     }
 
-    // electionId => candidateId => Candidate
-    mapping(uint => mapping(uint => Candidate)) public candidates;
+    mapping(uint => Candidate) public candidates;
     
-    // electionId => address => đã vote chưa
-    mapping(uint => mapping(address => bool)) public hasVoted;
+    // 🆕 hasVoted theo từng cuộc bầu cử
+    mapping(uint => mapping(address => bool)) public votedInElection;
     
-    // electionId => số lượng ứng viên
-    mapping(uint => uint) public candidatesCount;
-    
-    uint public currentElectionId;
+    uint    public candidatesCount;
+    uint    public electionId;      // 🆕 ID cuộc bầu cử
     address public owner;
+    uint    public deadline;
+    bool    public isActive;
 
-    event Voted(address indexed voter, uint indexed candidateId, uint electionId);
-    event CandidateAdded(uint id, string name, uint electionId);
-    event NewElectionStarted(uint electionId);
+    event Voted(address indexed voter, uint indexed candidateId);
+    event CandidateAdded(uint id, string name);
+    event CandidateHidden(uint id);
+    event CandidateShown(uint id);
+    event ElectionStarted(uint deadline);
+    event ElectionEnded();
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Chi chu so huu moi duoc goi");
         _;
     }
 
+    modifier electionOpen() {
+        require(isActive, "Bau cu chua bat dau hoac da ket thuc");
+        require(block.timestamp < deadline, "Da het thoi gian bau cu");
+        _;
+    }
+
     constructor() {
-        owner = msg.sender;
-        currentElectionId = 1;
+        owner     = msg.sender;
+        isActive  = false;
+        electionId = 0;
         _addCandidate("Ung vien A");
         _addCandidate("Ung vien B");
         _addCandidate("Ung vien C");
     }
 
-    // Bắt đầu cuộc bầu cử mới (chỉ owner)
-    function startNewElection() public onlyOwner {
-        currentElectionId++;
-        emit NewElectionStarted(currentElectionId);
+    function _addCandidate(string memory _name) internal {
+        candidatesCount++;
+        candidates[candidatesCount] = Candidate(candidatesCount, _name, 0, false);
+        emit CandidateAdded(candidatesCount, _name);
     }
 
-    // Thêm ứng viên vào cuộc bầu cử hiện tại
     function addCandidate(string memory _name) public onlyOwner {
+        require(!isActive, "Khong the them ung vien khi dang bau cu");
         _addCandidate(_name);
     }
 
-    function _addCandidate(string memory _name) internal {
-        uint eId = currentElectionId;
-        candidatesCount[eId]++;
-        uint cId = candidatesCount[eId];
-        candidates[eId][cId] = Candidate(cId, _name, 0);
-        emit CandidateAdded(cId, _name, eId);
+    function hideCandidate(uint _id) public onlyOwner {
+        require(_id > 0 && _id <= candidatesCount, "Ung vien khong hop le");
+        require(!candidates[_id].isHidden, "Ung vien da duoc an roi");
+        candidates[_id].isHidden = true;
+        emit CandidateHidden(_id);
     }
 
-    // Bỏ phiếu trong cuộc bầu cử hiện tại
-    function vote(uint _candidateId) public {
-        uint eId = currentElectionId;
-        require(!hasVoted[eId][msg.sender], "Ban da bo phieu roi!");
-        require(
-            _candidateId > 0 && _candidateId <= candidatesCount[eId],
-            "Ung vien khong hop le"
-        );
-
-        hasVoted[eId][msg.sender] = true;
-        candidates[eId][_candidateId].voteCount++;
-
-        emit Voted(msg.sender, _candidateId, eId);
+    function showCandidate(uint _id) public onlyOwner {
+        require(_id > 0 && _id <= candidatesCount, "Ung vien khong hop le");
+        require(candidates[_id].isHidden, "Ung vien dang hien thi roi");
+        candidates[_id].isHidden = false;
+        emit CandidateShown(_id);
     }
 
-    // Lấy danh sách ứng viên cuộc bầu cử hiện tại
-    function getAllCandidates()
-        public view returns (Candidate[] memory)
-    {
-        uint eId = currentElectionId;
-        uint count = candidatesCount[eId];
-        Candidate[] memory result = new Candidate[](count);
-        for (uint i = 1; i <= count; i++) {
-            result[i - 1] = candidates[eId][i];
+    function startElection(uint _durationSeconds) public onlyOwner {
+        require(candidatesCount > 0, "Chua co ung vien nao");
+        require(!isActive, "Bau cu dang chay roi");
+        require(_durationSeconds > 0, "Thoi gian phai lon hon 0");
+        
+        // 🆕 Reset vote count + tăng electionId
+        for (uint i = 1; i <= candidatesCount; i++) {
+            candidates[i].voteCount = 0;
+        }
+        electionId++;
+        
+        deadline = block.timestamp + _durationSeconds;
+        isActive = true;
+        emit ElectionStarted(deadline);
+    }
+
+    function endElection() public onlyOwner {
+        require(isActive, "Bau cu chua bat dau");
+        isActive = false;
+        emit ElectionEnded();
+    }
+
+    function vote(uint _candidateId) public electionOpen {
+        // 🆕 Check theo electionId hiện tại
+        require(!votedInElection[electionId][msg.sender], "Ban da bo phieu roi!");
+        require(_candidateId > 0 && _candidateId <= candidatesCount, "Ung vien khong hop le");
+        require(!candidates[_candidateId].isHidden, "Ung vien nay da bi an");
+        
+        votedInElection[electionId][msg.sender] = true;
+        candidates[_candidateId].voteCount++;
+        emit Voted(msg.sender, _candidateId);
+    }
+
+    // 🆕 Check đã vote trong cuộc bầu cử hiện tại chưa
+    function hasVoted(address _voter) public view returns (bool) {
+        return votedInElection[electionId][_voter];
+    }
+
+    function getAllCandidates() public view returns (Candidate[] memory) {
+        Candidate[] memory result = new Candidate[](candidatesCount);
+        for (uint i = 1; i <= candidatesCount; i++) {
+            result[i - 1] = candidates[i];
         }
         return result;
     }
 
-    // Kiểm tra địa chỉ đã vote trong cuộc bầu cử hiện tại chưa
-    function hasVotedCurrent(address _addr) public view returns (bool) {
-        return hasVoted[currentElectionId][_addr];
+    function getActiveCandidates() public view returns (Candidate[] memory) {
+        uint count = 0;
+        for (uint i = 1; i <= candidatesCount; i++) {
+            if (!candidates[i].isHidden) count++;
+        }
+        Candidate[] memory result = new Candidate[](count);
+        uint idx = 0;
+        for (uint i = 1; i <= candidatesCount; i++) {
+            if (!candidates[i].isHidden) result[idx++] = candidates[i];
+        }
+        return result;
+    }
+
+    function getElectionInfo() public view returns (
+        bool _isActive, uint _deadline, uint _timeLeft, uint _totalVotes
+    ) {
+        _isActive = isActive;
+        _deadline = deadline;
+        _timeLeft = (isActive && block.timestamp < deadline)
+                    ? deadline - block.timestamp : 0;
+        uint total = 0;
+        for (uint i = 1; i <= candidatesCount; i++) {
+            if (!candidates[i].isHidden) total += candidates[i].voteCount;
+        }
+        _totalVotes = total;
     }
 }

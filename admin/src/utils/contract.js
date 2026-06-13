@@ -1,6 +1,6 @@
 import { ethers } from "ethers";
 
-export const CONTRACT_ADDRESS = "0xF74f589db0A5f832204Ee45b1AE5436D030D96a2";
+export const CONTRACT_ADDRESS = "0x2b6C241D41D58d3Cc0cAdAb1b27B63770B4F6eFe";
 
 export const CONTRACT_ABI = [
   { "inputs": [], "stateMutability": "nonpayable", "type": "constructor" },
@@ -61,31 +61,30 @@ export const CONTRACT_ABI = [
     "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
     "stateMutability": "view", "type": "function"
   },
+  {
+    "inputs": [], "name": "electionId",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "stateMutability": "view", "type": "function"
+  },
   { "inputs": [], "name": "endElection", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
   {
-    "inputs": [], "name": "getAllCandidates",
-    "outputs": [{
-      "components": [
-        { "internalType": "uint256", "name": "id", "type": "uint256" },
-        { "internalType": "string", "name": "name", "type": "string" },
-        { "internalType": "uint256", "name": "voteCount", "type": "uint256" },
-        { "internalType": "bool", "name": "isHidden", "type": "bool" }
-      ],
-      "internalType": "struct Voting.Candidate[]", "name": "", "type": "tuple[]"
-    }],
+    "inputs": [], "name": "getActiveCandidates",
+    "outputs": [{ "components": [
+      { "internalType": "uint256", "name": "id", "type": "uint256" },
+      { "internalType": "string", "name": "name", "type": "string" },
+      { "internalType": "uint256", "name": "voteCount", "type": "uint256" },
+      { "internalType": "bool", "name": "isHidden", "type": "bool" }
+    ], "internalType": "struct Voting.Candidate[]", "name": "", "type": "tuple[]" }],
     "stateMutability": "view", "type": "function"
   },
   {
-    "inputs": [], "name": "getActiveCandidates",
-    "outputs": [{
-      "components": [
-        { "internalType": "uint256", "name": "id", "type": "uint256" },
-        { "internalType": "string", "name": "name", "type": "string" },
-        { "internalType": "uint256", "name": "voteCount", "type": "uint256" },
-        { "internalType": "bool", "name": "isHidden", "type": "bool" }
-      ],
-      "internalType": "struct Voting.Candidate[]", "name": "", "type": "tuple[]"
-    }],
+    "inputs": [], "name": "getAllCandidates",
+    "outputs": [{ "components": [
+      { "internalType": "uint256", "name": "id", "type": "uint256" },
+      { "internalType": "string", "name": "name", "type": "string" },
+      { "internalType": "uint256", "name": "voteCount", "type": "uint256" },
+      { "internalType": "bool", "name": "isHidden", "type": "bool" }
+    ], "internalType": "struct Voting.Candidate[]", "name": "", "type": "tuple[]" }],
     "stateMutability": "view", "type": "function"
   },
   {
@@ -99,7 +98,7 @@ export const CONTRACT_ABI = [
     "stateMutability": "view", "type": "function"
   },
   {
-    "inputs": [{ "internalType": "address", "name": "", "type": "address" }],
+    "inputs": [{ "internalType": "address", "name": "_voter", "type": "address" }],
     "name": "hasVoted",
     "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
     "stateMutability": "view", "type": "function"
@@ -129,15 +128,25 @@ export const CONTRACT_ABI = [
   {
     "inputs": [{ "internalType": "uint256", "name": "_candidateId", "type": "uint256" }],
     "name": "vote", "outputs": [], "stateMutability": "nonpayable", "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "", "type": "uint256" },
+      { "internalType": "address", "name": "", "type": "address" }
+    ],
+    "name": "votedInElection",
+    "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+    "stateMutability": "view", "type": "function"
   }
 ];
 
 const SEPOLIA_CHAIN_ID = "0xaa36a7";
 const ALCHEMY_KEY      = "rgMwviFT2aroOcmtf6s1a";
-export const SEPOLIA_RPC = `https://eth-sepolia.g.alchemy.com/v2/${ALCHEMY_KEY}`;
+const SEPOLIA_WSS      = `wss://eth-sepolia.g.alchemy.com/v2/${ALCHEMY_KEY}`;
+const SEPOLIA_RPC      = `https://eth-sepolia.g.alchemy.com/v2/${ALCHEMY_KEY}`;
 
 export async function connectWallet() {
-  if (!window.ethereum) throw new Error("Chưa cài MetaMask!");
+  if (!window.ethereum) throw new Error("MetaMask chưa được cài! Vào metamask.io để tải.");
   try {
     await window.ethereum.request({
       method: "wallet_switchEthereumChain",
@@ -159,6 +168,11 @@ export async function connectWallet() {
   }
   const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
   return accounts[0];
+}
+
+export function getContract() {
+  const provider = new ethers.WebSocketProvider(SEPOLIA_WSS);
+  return new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
 }
 
 export function getReadContract() {
